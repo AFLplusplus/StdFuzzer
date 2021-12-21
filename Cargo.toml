@@ -1,0 +1,27 @@
+[package]
+name = "stdfuzzer"
+version = "0.1.0"
+authors = ["Andrea Fioraldi <andreafioraldi@gmail.com>"]
+edition = "2021"
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
+debug = true
+
+[build-dependencies]
+cc = { version = "1.0", features = ["parallel"] }
+which = { version = "4.0.2" }
+num_cpus = "1.0"
+
+[dependencies]
+libafl = { git = "https://github.com/AFLplusplus/LibAFL.git", rev = "208d693" }
+libafl_targets = { git = "https://github.com/AFLplusplus/LibAFL.git", rev = "208d693", features = ["sancov_pcguard_hitcounts", "sancov_cmplog", "libfuzzer"] }
+# TODO Include it only when building cc
+libafl_cc = { git = "https://github.com/AFLplusplus/LibAFL.git", rev = "208d693" }
+structopt = "0.3.25"
+
+[lib]
+name = "stdfuzzer"
+crate-type = ["staticlib"]

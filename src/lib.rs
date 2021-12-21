@@ -53,9 +53,9 @@ fn timeout_from_millis_str(time: &str) -> Result<Duration, Error> {
 
 #[derive(Debug, StructOpt)]
 #[structopt(
-    name = "generic_inmemory",
-    about = "A generic libfuzzer-like fuzzer with llmp-multithreading support",
-    author = "Andrea Fioraldi <andreafioraldi@gmail.com>, Dominik Maier <domenukk@gmail.com>"
+    name = "StdFuzzer",
+    about = "StdFuzzer is the reference implementation of a generic bit-level fuzzer with LibAFL",
+    author = "Andrea Fioraldi <andreafioraldi@gmail.com>"
 )]
 struct Opt {
     #[structopt(

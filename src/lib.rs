@@ -28,7 +28,7 @@ use libafl::{
     fuzzer::{Fuzzer, StdFuzzer},
     generators::RandBytesGenerator,
     inputs::{BytesInput, HasTargetBytes},
-    monitors::MultiMonitor,
+    monitors::tui::TuiMonitor,
     mutators::{
         scheduled::{havoc_mutations, tokens_mutations, StdScheduledMutator},
         token_mutations::{I2SRandReplace, Tokens},
@@ -48,6 +48,8 @@ use libafl_targets::{
     libfuzzer_initialize, libfuzzer_test_one_input, CmpLogObserver, CMPLOG_MAP, EDGES_MAP,
     MAX_EDGES_NUM,
 };
+
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Parses a millseconds int into a [`Duration`], used for commandline arg parsing
 fn timeout_from_millis_str(time: &str) -> Result<Duration, Error> {
@@ -125,15 +127,18 @@ struct Opt {
         multiple = true
     )]
     tokens: Vec<PathBuf>,
+
+    #[structopt(
+        long,
+        help = "Disable unicode in the UI (for old terminals)",
+        name = "DISABLE_UNICODE"
+    )]
+    disable_unicode: bool,
 }
 
 /// The main fn, `no_mangle` as it is a C symbol
 #[no_mangle]
 pub fn libafl_main() {
-    // Registry the metadata types used in this fuzzer
-    // Needed only on no_std
-    //RegistryBuilder::register::<Tokens>();
-
     let workdir = env::current_dir().unwrap();
 
     let opt = Opt::from_args();
@@ -151,7 +156,10 @@ pub fn libafl_main() {
 
     let shmem_provider = StdShMemProvider::new().expect("Failed to init shared memory");
 
-    let monitor = MultiMonitor::new(|s| println!("{}", s));
+    let monitor = TuiMonitor::new(
+        format!("LibAFL's StdFuzzer v{}", VERSION),
+        !opt.disable_unicode,
+    );
 
     let mut run_client = |state: Option<StdState<_, _, _, _, _>>, mut mgr, _core_id| {
         // Create an observation channel using the coverage map

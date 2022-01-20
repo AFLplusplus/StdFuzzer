@@ -1,6 +1,8 @@
 # StdFuzzer
 
-StdFuzzer is the reference implementation of a generic bit-level fuzzer with LibAFL
+StdFuzzer is the reference implementation of a generic source-based bit-level fuzzer with LibAFL
+
+![screenshot](assets/screenshot.png)
 
 ## Building
 

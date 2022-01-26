@@ -1,6 +1,6 @@
 [package]
 name = "stdfuzzer"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Andrea Fioraldi <andreafioraldi@gmail.com>"]
 edition = "2021"
 
@@ -16,10 +16,10 @@ which = { version = "4.0.2" }
 num_cpus = "1.0"
 
 [dependencies]
-libafl = { git = "https://github.com/AFLplusplus/LibAFL.git", rev = "c73326e6a4b789063358e36a0097a486260154a8" }
-libafl_targets = { git = "https://github.com/AFLplusplus/LibAFL.git", rev = "c73326e6a4b789063358e36a0097a486260154a8", features = ["sancov_pcguard_hitcounts", "sancov_cmplog", "libfuzzer"] }
+libafl = { git = "https://github.com/AFLplusplus/LibAFL.git", rev = "408431ba5c1c6e3571c1183e99dfdca4de089bdc" }
+libafl_targets = { git = "https://github.com/AFLplusplus/LibAFL.git", rev = "408431ba5c1c6e3571c1183e99dfdca4de089bdc", features = ["sancov_pcguard_hitcounts", "sancov_cmplog", "libfuzzer"] }
 # TODO Include it only when building cc
-libafl_cc = { git = "https://github.com/AFLplusplus/LibAFL.git", rev = "c73326e6a4b789063358e36a0097a486260154a8" }
+libafl_cc = { git = "https://github.com/AFLplusplus/LibAFL.git", rev = "408431ba5c1c6e3571c1183e99dfdca4de089bdc" }
 mimalloc = { version = "*", default-features = false }
 structopt = "0.3.25"
 

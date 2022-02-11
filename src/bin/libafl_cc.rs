@@ -16,14 +16,20 @@ pub fn main() {
         dir.pop();
 
         let mut cc = ClangWrapper::new();
+
+        #[cfg(target_os = "linux")]
+        cc.add_pass(LLVMPasses::AutoTokens);
+
         if let Some(code) = cc
             .cpp(is_cpp)
             // silence the compiler wrapper output, needed for some configure scripts.
             .silence(true)
+            // use --libafl and --libafl-no-link to instrument
+            .need_libafl_arg(true)
             .parse_args(&args)
             .expect("Failed to parse the command line")
             .link_staticlib(&dir, "stdfuzzer")
-            .add_arg("-fsanitize-coverage=trace-pc-guard,trace-cmp")
+            .add_arg("-fsanitize-coverage=inline-8bit-counters,trace-cmp")
             .add_pass(LLVMPasses::CmpLogRtn)
             .run()
             .expect("Failed to run the wrapped compiler")

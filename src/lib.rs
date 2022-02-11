@@ -35,7 +35,7 @@ use libafl::{
         token_mutations::{I2SRandReplace, Tokens},
         StdMOptMutator,
     },
-    observers::{HitcountsMapObserver, StdMapObserver, TimeObserver},
+    observers::{HitcountsMapObserver, MultiMapObserver, TimeObserver},
     stages::{
         calibrate::CalibrationStage,
         power::{PowerMutationalStage, PowerSchedule},
@@ -46,9 +46,11 @@ use libafl::{
 };
 
 use libafl_targets::{
-    libfuzzer_initialize, libfuzzer_test_one_input, CmpLogObserver, CMPLOG_MAP, EDGES_MAP,
-    MAX_EDGES_NUM,
+    libfuzzer_initialize, libfuzzer_test_one_input, CmpLogObserver, CMPLOG_MAP, COUNTERS_MAPS,
 };
+
+#[cfg(target_os = "linux")]
+use libafl_targets::autotokens;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -123,7 +125,7 @@ struct Opt {
         parse(from_os_str),
         short = "x",
         long,
-        help = "Feed the fuzzer with an user-specified list of tokens (often called \"dictionary\"",
+        help = "Feed the fuzzer with an user-specified list of tokens (often called \"dictionary\")",
         name = "TOKENS",
         multiple = true
     )]
@@ -164,8 +166,8 @@ pub fn libafl_main() {
 
     let mut run_client = |state: Option<StdState<_, _, _, _, _>>, mut mgr, _core_id| {
         // Create an observation channel using the coverage map
-        let edges = unsafe { &mut EDGES_MAP[0..MAX_EDGES_NUM] };
-        let edges_observer = HitcountsMapObserver::new(StdMapObserver::new("edges", edges));
+        let edges = unsafe { &mut COUNTERS_MAPS };
+        let edges_observer = HitcountsMapObserver::new(MultiMapObserver::new("edges", edges));
 
         // Create an observation channel to keep track of the execution time
         let time_observer = TimeObserver::new("time");
@@ -205,10 +207,19 @@ pub fn libafl_main() {
             )
         });
 
-        // Create a dictionary if not existing
+        // Read tokens
         if state.metadata().get::<Tokens>().is_none() {
-            for tokens_file in &token_files {
-                state.add_metadata(Tokens::from_tokens_file(tokens_file)?);
+            let mut toks = Tokens::default();
+            for tokenfile in &token_files {
+                toks.add_from_file(tokenfile)?;
+            }
+            #[cfg(target_os = "linux")]
+            {
+                toks += autotokens()?;
+            }
+
+            if !toks.is_empty() {
+                state.add_metadata(toks);
             }
         }
 

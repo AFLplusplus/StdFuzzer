@@ -10,22 +10,19 @@ use structopt::StructOpt;
 
 use libafl::{
     bolts::{
+        core_affinity::Cores,
         current_nanos,
         launcher::Launcher,
-        os::Cores,
         rands::StdRand,
         shmem::{ShMemProvider, StdShMemProvider},
         tuples::{tuple_list, Merge},
         AsSlice,
     },
-    corpus::{
-        Corpus, InMemoryCorpus, IndexesLenTimeMinimizerCorpusScheduler, OnDiskCorpus,
-        PowerQueueCorpusScheduler,
-    },
+    corpus::{Corpus, InMemoryCorpus, OnDiskCorpus},
     events::EventConfig,
     executors::{inprocess::InProcessExecutor, ExitKind, TimeoutExecutor},
     feedback_or,
-    feedbacks::{CrashFeedback, MapFeedbackState, MaxMapFeedback, TimeFeedback, TimeoutFeedback},
+    feedbacks::{CrashFeedback, MaxMapFeedback, TimeFeedback, TimeoutFeedback},
     fuzzer::{Fuzzer, StdFuzzer},
     generators::RandBytesGenerator,
     inputs::{BytesInput, HasTargetBytes},
@@ -36,10 +33,12 @@ use libafl::{
         StdMOptMutator,
     },
     observers::{HitcountsMapObserver, StdMapObserver, TimeObserver},
+    schedulers::{
+        powersched::PowerSchedule, IndexesLenTimeMinimizerScheduler, PowerQueueScheduler,
+    },
     stages::{
-        calibrate::CalibrationStage,
-        power::{PowerMutationalStage, PowerSchedule},
-        StdMutationalStage, TracingStage,
+        calibrate::CalibrationStage, power::StdPowerMutationalStage, StdMutationalStage,
+        TracingStage,
     },
     state::{HasCorpus, HasMetadata, StdState},
     Error,
@@ -162,7 +161,7 @@ pub fn libafl_main() {
         !opt.disable_unicode,
     );
 
-    let mut run_client = |state: Option<StdState<_, _, _, _, _>>, mut mgr, _core_id| {
+    let mut run_client = |state: Option<_>, mut mgr, _core_id| {
         // Create an observation channel using the coverage map
         let edges = unsafe { &mut EDGES_MAP[0..MAX_EDGES_NUM] };
         let edges_observer = HitcountsMapObserver::new(StdMapObserver::new("edges", edges));
@@ -174,20 +173,17 @@ pub fn libafl_main() {
         let cmplog = unsafe { &mut CMPLOG_MAP };
         let cmplog_observer = CmpLogObserver::new("cmplog", cmplog, true);
 
-        // The state of the edges feedback.
-        let feedback_state = MapFeedbackState::with_observer(&edges_observer);
-
         // Feedback to rate the interestingness of an input
         // This one is composed by two Feedbacks in OR
-        let feedback = feedback_or!(
+        let mut feedback = feedback_or!(
             // New maximization map feedback linked to the edges observer and the feedback state
-            MaxMapFeedback::new_tracking(&feedback_state, &edges_observer, true, false),
+            MaxMapFeedback::new_tracking(&edges_observer, true, false),
             // Time feedback, this one does not need a feedback state
             TimeFeedback::new_with_observer(&time_observer)
         );
 
         // A feedback to choose if an input is a solution or not
-        let objective = feedback_or!(CrashFeedback::new(), TimeoutFeedback::new());
+        let mut objective = feedback_or!(CrashFeedback::new(), TimeoutFeedback::new());
 
         // If not restarting, create a State from scratch
         let mut state = state.unwrap_or_else(|| {
@@ -200,15 +196,18 @@ pub fn libafl_main() {
                 // on disk so the user can get them after stopping the fuzzer
                 OnDiskCorpus::new(output_dir.clone()).unwrap(),
                 // States of the feedbacks.
-                // They are the data related to the feedbacks that you want to persist in the State.
-                tuple_list!(feedback_state),
+                // The feedbacks can report the data that should persist in the State.
+                &mut feedback,
+                // Same for objective feedbacks
+                &mut objective,
             )
+            .unwrap()
         });
 
         // Create a dictionary if not existing
         if state.metadata().get::<Tokens>().is_none() {
             for tokens_file in &token_files {
-                state.add_metadata(Tokens::from_tokens_file(tokens_file)?);
+                state.add_metadata(Tokens::from_file(tokens_file)?);
             }
         }
 
@@ -219,21 +218,26 @@ pub fn libafl_main() {
             println!("Warning: LLVMFuzzerInitialize failed with -1")
         }
 
-        let calibration = CalibrationStage::new(&mut state, &edges_observer);
+        let map_feedback = MaxMapFeedback::new_tracking(&edges_observer, true, false);
+        let calibration = CalibrationStage::new(&map_feedback);
 
         // Setup a randomic Input2State stage
         let i2s =
             StdMutationalStage::new(StdScheduledMutator::new(tuple_list!(I2SRandReplace::new())));
 
         // Setup a MOPT mutator
-        let mutator =
-            StdMOptMutator::new(&mut state, havoc_mutations().merge(tokens_mutations()), 5)?;
+        let mutator = StdMOptMutator::new(
+            &mut state,
+            havoc_mutations().merge(tokens_mutations()),
+            7,
+            5,
+        )?;
 
-        let power = PowerMutationalStage::new(mutator, PowerSchedule::FAST, &edges_observer);
+        let power = StdPowerMutationalStage::new(mutator, &edges_observer);
 
         // A minimization+queue policy to get testcasess from the corpus
         let scheduler =
-            IndexesLenTimeMinimizerCorpusScheduler::new(PowerQueueCorpusScheduler::new());
+            IndexesLenTimeMinimizerScheduler::new(PowerQueueScheduler::new(PowerSchedule::FAST));
 
         // A fuzzer with feedbacks and a corpus scheduler
         let mut fuzzer = StdFuzzer::new(scheduler, feedback, objective);

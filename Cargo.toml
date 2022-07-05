@@ -16,10 +16,10 @@ which = { version = "4.0.2" }
 num_cpus = "1.0"
 
 [dependencies]
-libafl = { git = "https://github.com/AFLplusplus/LibAFL.git", rev = "408431ba5c1c6e3571c1183e99dfdca4de089bdc" }
-libafl_targets = { git = "https://github.com/AFLplusplus/LibAFL.git", rev = "408431ba5c1c6e3571c1183e99dfdca4de089bdc", features = ["sancov_pcguard_hitcounts", "sancov_cmplog", "libfuzzer"] }
+libafl = { git = "https://github.com/AFLplusplus/LibAFL.git", rev = "7870a6e6993a2ffa755bef4751934e9c401b2f09" }
+libafl_targets = { git = "https://github.com/AFLplusplus/LibAFL.git", rev = "7870a6e6993a2ffa755bef4751934e9c401b2f09", features = ["sancov_pcguard_hitcounts", "sancov_cmplog", "libfuzzer"] }
 # TODO Include it only when building cc
-libafl_cc = { git = "https://github.com/AFLplusplus/LibAFL.git", rev = "408431ba5c1c6e3571c1183e99dfdca4de089bdc" }
+libafl_cc = { git = "https://github.com/AFLplusplus/LibAFL.git", rev = "7870a6e6993a2ffa755bef4751934e9c401b2f09" }
 mimalloc = { version = "*", default-features = false }
 structopt = "0.3.25"
 

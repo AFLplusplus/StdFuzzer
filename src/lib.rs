@@ -4,9 +4,9 @@ use mimalloc::MiMalloc;
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
+use clap::{self, StructOpt};
 use core::time::Duration;
 use std::{env, net::SocketAddr, path::PathBuf};
-use structopt::StructOpt;
 
 use libafl::{
     bolts::{
@@ -57,13 +57,14 @@ fn timeout_from_millis_str(time: &str) -> Result<Duration, Error> {
 }
 
 #[derive(Debug, StructOpt)]
-#[structopt(
+#[clap(
     name = "StdFuzzer",
     about = "StdFuzzer is the reference implementation of a generic bit-level fuzzer with LibAFL",
-    author = "Andrea Fioraldi <andreafioraldi@gmail.com>"
+    author = "Andrea Fioraldi <andreafioraldi@gmail.com>",
+    version = VERSION
 )]
 struct Opt {
-    #[structopt(
+    #[clap(
         short,
         long,
         parse(try_from_str = Cores::from_cmdline),
@@ -72,24 +73,24 @@ struct Opt {
     )]
     cores: Cores,
 
-    #[structopt(
-        short = "p",
+    #[clap(
+        short = 'p',
         long,
         help = "Choose the broker TCP port, default is 1337",
         name = "PORT"
     )]
     broker_port: u16,
 
-    #[structopt(
+    #[clap(
         parse(try_from_str),
-        short = "a",
+        short = 'a',
         long,
         help = "Specify a remote broker",
         name = "REMOTE"
     )]
     remote_broker_addr: Option<SocketAddr>,
 
-    #[structopt(
+    #[clap(
         parse(try_from_str),
         short,
         long,
@@ -98,7 +99,7 @@ struct Opt {
     )]
     input: Vec<PathBuf>,
 
-    #[structopt(
+    #[clap(
         short,
         long,
         parse(try_from_str),
@@ -108,19 +109,19 @@ struct Opt {
     )]
     output: PathBuf,
 
-    #[structopt(
+    #[clap(
         parse(try_from_str = timeout_from_millis_str),
         short,
         long,
-        help = "Set the exeucution timeout in milliseconds, default is 1000",
+        help = "Set the execution timeout in milliseconds, default is 1000",
         name = "TIMEOUT",
         default_value = "1000"
     )]
     timeout: Duration,
 
-    #[structopt(
+    #[clap(
         parse(from_os_str),
-        short = "x",
+        short = 'x',
         long,
         help = "Feed the fuzzer with an user-specified list of tokens (often called \"dictionary\"",
         name = "TOKENS",
@@ -128,7 +129,7 @@ struct Opt {
     )]
     tokens: Vec<PathBuf>,
 
-    #[structopt(
+    #[clap(
         long,
         help = "Disable unicode in the UI (for old terminals)",
         name = "DISABLE_UNICODE"
@@ -141,7 +142,7 @@ struct Opt {
 pub fn libafl_main() {
     let workdir = env::current_dir().unwrap();
 
-    let opt = Opt::from_args();
+    let opt = Opt::parse();
 
     let cores = opt.cores;
     let broker_port = opt.broker_port;

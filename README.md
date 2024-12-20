@@ -1,5 +1,7 @@
 # StdFuzzer
 
+** Deprecated! This has not been maintained in a while. Instead. check out [the example fuzzers in the main LibAFL repo](https://github.com/AFLplusplus/LibAFL/tree/main/fuzzers) **
+
 StdFuzzer is the reference implementation of a generic source-based bit-level fuzzer with LibAFL
 
 ![screenshot](assets/screenshot.png)
